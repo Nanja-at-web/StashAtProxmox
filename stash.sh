@@ -16,7 +16,7 @@
 
 # Verwendung (Proxmox Shell):
 
-# bash -c “$(curl -fsSL https://raw.githubusercontent.com/Nanja-at-web/StashAtProxmox/main/ct/stash.sh)”
+# bash -c “$(curl -fsSL https://raw.githubusercontent.com/Nanja-at-web/StashAtProxmox/main/stash.sh)”
 
 # ============================================================
 
