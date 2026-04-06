@@ -6,21 +6,23 @@
 
 # Inspiriert von community-scripts/ProxmoxVE
 
-# Quelle: https://github.com/stashapp/stash
+# GitHub:  https://github.com/Nanja-at-web/StashAtProxmox
 
-# Docs:   https://docs.stashapp.cc
+# Quelle:  https://github.com/stashapp/stash
 
-# ============================================================
-
-# Verwendung:
-
-# bash -c “$(curl -fsSL https://raw.githubusercontent.com/DEIN_GITHUB_USER/DEIN_REPO/main/ct/stash.sh)”
+# Docs:    https://docs.stashapp.cc
 
 # ============================================================
 
-# –– GitHub Repository (ANPASSEN!) ––
+# Verwendung (Proxmox Shell):
 
-GITHUB_RAW=“https://raw.githubusercontent.com/DEIN_GITHUB_USER/DEIN_REPO/main”
+# bash -c “$(curl -fsSL https://raw.githubusercontent.com/Nanja-at-web/StashAtProxmox/main/ct/stash.sh)”
+
+# ============================================================
+
+# –– GitHub Repository ––
+
+GITHUB_RAW=“https://raw.githubusercontent.com/Nanja-at-web/StashAtProxmox/main”
 
 # –– Farben & Symbole ––
 
@@ -165,8 +167,8 @@ STASH_PORT=“9999”
 # ============================================================
 
 whiptail –title “STASH Installer” –msgbox   
-“Willkommen zum Stash LXC Installer!\n\nDieses Skript erstellt einen Proxmox LXC Container und installiert Stash als Docker-Container.\n\nStash ist ein Media-Organizer für deine Film- und Bildsammlung.\n\nWeiter mit OK…”   
-14 60
+“Willkommen zum Stash LXC Installer!\n\nDieses Skript erstellt einen Proxmox LXC Container\nund installiert Stash als Docker-Container.\n\nStash ist ein Media-Organizer fuer deine Film-\nund Bildsammlung.\n\nDeine QNAP TS-210 NAS (192.168.1.xx) kann als\nMedienbibliothek direkt eingebunden werden.\n\nGitHub: github.com/Nanja-at-web/StashAtProxmox\n\nWeiter mit OK…”   
+20 65
 
 CTID=$(whiptail –inputbox   
 “Container ID\n(Nächste freie ID wird vorgeschlagen)”   
@@ -223,73 +225,75 @@ NAS_SHARE=””
 NAS_USER=””
 NAS_PASS=””
 NAS_DOMAIN=“WORKGROUP”
-NAS_MOUNT=”/mnt/nas”
+NAS_MOUNT=”/mnt/qnap”
 NAS_OPTIONS=””
 
-if whiptail –title “STASH — NAS Freigabe” –yesno   
-“NAS Freigabe einbinden?\n\nStash kann direkt auf deine NAS-Medienbibliothek zugreifen.\n\nUnterstützt:\n  • SMB/CIFS (Synology, QNAP, Windows-Freigaben)\n  • NFS (Linux/Unix NAS)\n\nJetzt konfigurieren?”   
-15 65; then
+if whiptail –title “STASH — QNAP NAS Freigabe” –yesno   
+“QNAP TS-210 NAS Freigabe einbinden?\n\nStash greift direkt auf deine QNAP-Medienbibliothek zu.\n\nUnterstützte Protokolle:\n  • SMB/CIFS  (empfohlen für QNAP TS-210)\n  • NFS        (alternativ, muss am QNAP aktiviert sein)\n\nBenötigt: QNAP IP-Adresse (z.B. 192.168.1.xx)\n           und einen QNAP-Benutzer mit Zugriff.\n\nJetzt konfigurieren?”   
+18 68; then
 
 NAS_ENABLED=“yes”
 
 NAS_TYPE=$(whiptail –title “STASH — NAS Protokoll” –radiolist   
-“NAS Protokoll wählen:\n(Leertaste = Auswählen)”   
-12 65 2   
-“cifs” “SMB/CIFS  (Synology, QNAP, Windows)” ON   
-“nfs”  “NFS        (Linux/Unix NAS)” OFF   
+“NAS Protokoll wählen:\n(QNAP TS-210 empfiehlt SMB/CIFS)\n(Leertaste = Auswählen)”   
+13 68 2   
+“cifs” “SMB/CIFS  (empfohlen — QNAP Netzwerkfreigabe)” ON   
+“nfs”  “NFS        (alternativ — muss in QNAP aktiviert sein)” OFF   
 3>&1 1>&2 2>&3) || exit 1
 
 NAS_SERVER=$(whiptail –inputbox   
-“NAS Server IP-Adresse oder Hostname\nBeispiel: 192.168.1.100  oder  meinnas.local”   
-9 65 “”   
-–title “STASH — NAS Server” 3>&1 1>&2 2>&3) || exit 1
+“QNAP TS-210 IP-Adresse\nBeispiel: 192.168.1.50  oder  192.168.1.100”   
+9 68 “192.168.1.”   
+–title “STASH — QNAP IP-Adresse” 3>&1 1>&2 2>&3) || exit 1
 
 if [[ “$NAS_TYPE” == “cifs” ]]; then
 NAS_SHARE=$(whiptail –inputbox   
-“CIFS Freigabename (ohne Schrägstriche)\nBeispiel: Videos  oder  Medien”   
-9 65 “”   
-–title “STASH — CIFS Freigabe” 3>&1 1>&2 2>&3) || exit 1
+“QNAP Freigabename (ohne Schrägstriche)\nTypische QNAP-Freigaben: Multimedia, Public, Download\nEigene Freigaben findest du in der QNAP Verwaltung.”   
+11 68 “Multimedia”   
+–title “STASH — QNAP Freigabename” 3>&1 1>&2 2>&3) || exit 1
 
 ```
 NAS_USER=$(whiptail --inputbox \
-  "CIFS Benutzername" \
-  8 60 "" \
-  --title "STASH — CIFS Benutzer" 3>&1 1>&2 2>&3) || exit 1
+  "QNAP Benutzername\n(QNAP-Benutzer mit Zugriff auf die Freigabe)" \
+  9 68 "admin" \
+  --title "STASH — QNAP Benutzer" 3>&1 1>&2 2>&3) || exit 1
 
 NAS_PASS=$(whiptail --passwordbox \
-  "CIFS Passwort" \
-  8 60 "" \
-  --title "STASH — CIFS Passwort" 3>&1 1>&2 2>&3) || exit 1
+  "QNAP Passwort für Benutzer '${NAS_USER}'" \
+  8 68 "" \
+  --title "STASH — QNAP Passwort" 3>&1 1>&2 2>&3) || exit 1
 
 NAS_DOMAIN=$(whiptail --inputbox \
-  "CIFS Domain / Arbeitsgruppe\n(leer lassen oder WORKGROUP bei Synology/QNAP)" \
-  9 65 "WORKGROUP" \
-  --title "STASH — CIFS Domain" 3>&1 1>&2 2>&3) || exit 1
+  "CIFS Domain / Arbeitsgruppe\n(QNAP Standard: WORKGROUP — i.d.R. nicht anpassen noetig)" \
+  9 68 "WORKGROUP" \
+  --title "STASH — QNAP Domain" 3>&1 1>&2 2>&3) || exit 1
 
+# QNAP TS-210: aelteres Geraet, vers=2.0 sicherer als vers=3.0
 NAS_OPTIONS=$(whiptail --inputbox \
-  "Zusätzliche CIFS Mount-Optionen (optional)\nStandard: vers=3.0,uid=0,gid=0,file_mode=0777,dir_mode=0777\n(leer lassen für Standardwerte)" \
-  10 70 "" \
-  --title "STASH — CIFS Optionen" 3>&1 1>&2 2>&3) || exit 1
+  "CIFS Mount-Optionen (optional — leer lassen fuer QNAP-Optimum)\n\nStandard fuer QNAP TS-210: vers=2.0 (SMB2)\nFalls Probleme: vers=1.0 eintragen (aeltere QTS-Versionen)" \
+  12 70 "" \
+  --title "STASH — QNAP CIFS Optionen" 3>&1 1>&2 2>&3) || exit 1
 ```
 
 else
 NAS_SHARE=$(whiptail –inputbox   
-“NFS Export-Pfad\nBeispiel: /volume1/Videos”   
-9 65 “”   
-–title “STASH — NFS Export” 3>&1 1>&2 2>&3) || exit 1
+“NFS Export-Pfad auf der QNAP\nIn QNAP Verwaltung unter: Netzwerk-Dienste → NFS\nBeispiel: /Multimedia  oder  /share/Multimedia”   
+11 68 “/Multimedia”   
+–title “STASH — QNAP NFS Export” 3>&1 1>&2 2>&3) || exit 1
 
 ```
+# QNAP TS-210 unterstützt zuverlässig NFSv3
 NAS_OPTIONS=$(whiptail --inputbox \
-  "Zusätzliche NFS Mount-Optionen (optional)\nStandard: nfsvers=4,_netdev\n(leer lassen für Standardwerte)" \
-  10 70 "" \
-  --title "STASH — NFS Optionen" 3>&1 1>&2 2>&3) || exit 1
+  "NFS Mount-Optionen (optional — leer lassen fuer QNAP-Optimum)\n\nStandard fuer QNAP TS-210: nfsvers=3,_netdev\n(TS-210 unterstuetzt NFSv3 stabiler als NFSv4)" \
+  12 70 "" \
+  --title "STASH — QNAP NFS Optionen" 3>&1 1>&2 2>&3) || exit 1
 ```
 
 fi
 
 NAS_MOUNT=$(whiptail –inputbox   
-“Mountpoint im Container\n(Hier wird die NAS-Freigabe eingehängt)”   
-9 65 “/mnt/nas”   
+“Mountpoint im Container\n(Hier wird die QNAP-Freigabe eingehängt)”   
+9 65 “/mnt/qnap”   
 –title “STASH — Mountpoint” 3>&1 1>&2 2>&3) || exit 1
 fi
 

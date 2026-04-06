@@ -1,112 +1,127 @@
 # 🎬 Stash — Proxmox VE LXC Installer
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Stash](https://img.shields.io/badge/Stash-Docs-blue)](https://docs.stashapp.cc)
+[![GitHub](https://img.shields.io/badge/GitHub-Nanja--at--web%2FStashAtProxmox-blue)](https://github.com/Nanja-at-web/StashAtProxmox)
+[![Stash Docs](https://img.shields.io/badge/Stash-Docs-orange)](https://docs.stashapp.cc)
 
-> Installiert [Stash](https://github.com/stashapp/stash) als Docker-Container in einem Proxmox LXC mit optionaler NAS-Freigabe (CIFS/SMB oder NFS).
+> Installiert [Stash](https://github.com/stashapp/stash) als Docker-Container in einem Proxmox LXC Container —  
+> mit direkter Einbindung der **QNAP TS-210 NAS** als Medienbibliothek (CIFS/SMB oder NFS).
 
 -----
 
-## 🚀 Installation
-
-Diesen Befehl im **Proxmox Shell** ausführen:
+## 🚀 Installation (Proxmox Shell)
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/DEIN_GITHUB_USER/DEIN_REPO/main/ct/stash.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Nanja-at-web/StashAtProxmox/main/ct/stash.sh)"
 ```
 
-> ⚠️ `DEIN_GITHUB_USER` und `DEIN_REPO` durch deinen GitHub-Benutzernamen und Repository-Namen ersetzen!
-
-Das Script führt dich interaktiv durch die Installation.
+Das Script führt dich mit interaktiven Menüs durch die komplette Einrichtung — inklusive QNAP-Verbindung.
 
 -----
 
 ## ✨ Was wird installiert?
 
-|Komponente         |Details                                    |
-|-------------------|-------------------------------------------|
-|**LXC Container**  |Debian 12, privilegiert (für Docker)       |
-|**Docker Engine**  |Aktuelle Version via offizielles Repository|
-|**Stash**          |`stashapp/stash:latest` via Docker Compose |
-|**NAS-Support**    |CIFS/SMB + NFS optional konfigurierbar     |
-|**Systemd Service**|Auto-Start, Auto-Update Pull               |
+|Komponente         |Details                                                |
+|-------------------|-------------------------------------------------------|
+|**LXC Container**  |Debian 12, privilegiert (erforderlich für Docker)      |
+|**Docker Engine**  |Aktuelle Version via offizielles Docker-Repository     |
+|**Stash**          |`stashapp/stash:latest` via Docker Compose             |
+|**QNAP NAS**       |CIFS/SMB (empfohlen) oder NFS, automatisch konfiguriert|
+|**Systemd Service**|Auto-Start beim Booten, NAS-Mount-Abhängigkeit         |
+|**Update-Script**  |`/usr/bin/update` für einfache Stash-Updates           |
 
 -----
 
-## ⚙️ Konfigurationsmöglichkeiten
+## ⚙️ Konfiguration
 
-### Container
+### LXC Container
 
-|Option      |Standard     |Beschreibung               |
-|------------|-------------|---------------------------|
-|Container ID|nächste freie|Proxmox CT-ID              |
-|Hostname    |`stash`      |Container-Hostname         |
-|CPU         |2 Kerne      |Empfohlen: 2-4             |
-|RAM         |2048 MB      |Empfohlen: 2-4 GB          |
-|Disk        |16 GB        |Für Config/Cache/Thumbnails|
-|Port        |9999         |Stash Web-Interface        |
+|Option      |Standard     |Beschreibung                 |
+|------------|-------------|-----------------------------|
+|Container ID|nächste freie|Proxmox CT-ID                |
+|Hostname    |`stash`      |Container-Hostname           |
+|CPU         |2 Kerne      |Empfohlen: 2–4               |
+|RAM         |2048 MB      |Empfohlen: 2–4 GB            |
+|Disk        |16 GB        |Für Config, Cache, Thumbnails|
+|Web-Port    |9999         |`http://CONTAINER-IP:9999`   |
 
-### NAS Freigabe (optional)
+### QNAP TS-210 NAS Einbindung
 
-|Option      |Beschreibung                            |
-|------------|----------------------------------------|
-|Typ         |CIFS/SMB oder NFS                       |
-|Server      |IP oder Hostname der NAS                |
-|Freigabe    |Share-Name (CIFS) oder Export-Pfad (NFS)|
-|Zugangsdaten|Benutzer/Passwort/Domain (nur CIFS)     |
-|Mountpoint  |Pfad im Container (Standard: `/mnt/nas`)|
+|Option     |QNAP-Standard |Beschreibung            |
+|-----------|--------------|------------------------|
+|Protokoll  |CIFS/SMB      |empfohlen für TS-210    |
+|IP-Adresse |`192.168.1.xx`|deine QNAP IP           |
+|Freigabe   |`Multimedia`  |QNAP Freigabename       |
+|Benutzer   |`admin`       |QNAP-Benutzer           |
+|Domain     |`WORKGROUP`   |QNAP-Standard           |
+|SMB-Version|`vers=2.0`    |TS-210 kompatibel (SMB2)|
+|Mountpoint |`/mnt/qnap`   |Pfad im Container       |
+
+
+> **Hinweis:** Die QNAP-Freigabe erscheint im Stash-Container als `/data`. Diesen Pfad in **Stash → Einstellungen → Bibliothek** eintragen.
 
 -----
 
-## 📁 Verzeichnisstruktur
+## 🖧 QNAP TS-210 vorbereiten
+
+### SMB/CIFS (empfohlen)
+
+1. QNAP Verwaltung: `http://192.168.1.xx`
+1. **Systemsteuerung → Dateidienste → SMB** → SMB aktiviert lassen
+1. Freigabe-Benutzer prüfen: **Dateistation → Rechtsklick → Berechtigungen**
+
+### NFS (alternativ)
+
+1. **Systemsteuerung → Dateidienste → NFS** → NFS aktivieren
+1. **Dateistation → Rechtsklick → Bearbeiten → NFS-Host-Zugriff** → Proxmox-IP eintragen
+
+-----
+
+## 📁 Verzeichnisstruktur im Container
 
 ```
 /opt/stash/
 ├── docker-compose.yml    # Docker Compose Konfiguration
-├── config/              # Stash Konfiguration, Scrapers, Plugins
-├── data/                # Medienbibliothek (oder NAS-Mount)
-├── metadata/            # Stash Datenbank
-├── cache/               # Cache
-├── blobs/               # Cover, Bilder (Binary Blobs)
-└── generated/           # Vorschaubilder, Transcodes, Sprites
+├── config/               # Stash Konfiguration, Scrapers, Plugins
+├── data/                 # Lokale Mediablage (ohne NAS)
+├── metadata/             # Stash SQLite Datenbank
+├── cache/                # Stash Cache
+├── blobs/                # Coverbilder
+└── generated/            # Vorschaubilder, Transcodes, Sprites
+
+/mnt/qnap/                # QNAP TS-210 Freigabe (eingehängt)
+/etc/stash-nas.credentials # QNAP Zugangsdaten (chmod 600)
 ```
 
 -----
 
 ## 🌐 Stash Bibliothek einrichten
 
-Nach der Installation:
-
 1. **Stash öffnen:** `http://CONTAINER-IP:9999`
-1. **Einstellungen → Bibliothek** aufrufen
-1. **Verzeichnis hinzufügen:**
-- Ohne NAS: `./data` (lokaler Ordner)
-- Mit NAS: `/data` (entspricht dem NAS-Mountpoint)
-1. **Speichern** → **Scan starten**
+1. **Einstellungen → Bibliothek → Verzeichnis hinzufügen:** `/data`
+1. **Speichern → Scan starten**
 
-### Regex-Ausschlüsse (Beispiele)
-
-In Stash → Einstellungen → Bibliothek → Ausgeschlossene Muster:
+### Empfohlene Regex-Ausschlüsse (Einstellungen → Bibliothek)
 
 ```
-sample\.mp4$              # Beispieldateien ausschließen
-/\.[[:word:]]+/           # Versteckte Verzeichnisse
-\.srt$                    # Untertitel-Dateien
+sample\.mp4$        # Beispieldateien
+/\.[[:word:]]+/     # Versteckte Verzeichnisse
+@eaDir/.*           # QNAP-interne Systemordner (wichtig!)
+\.DS_Store$         # macOS Systemdateien
 ```
+
+> ⚠️ **QNAP-spezifisch:** `@eaDir` wird von QNAP automatisch in jeden Ordner erstellt. Das Regex `@eaDir/.*` verhindert, dass Stash diese Systemdaten scannt.
 
 -----
 
 ## 🔄 Stash aktualisieren
 
 ```bash
-# Von außen (Proxmox Shell):
+# Von Proxmox Shell:
 pct exec CONTAINER_ID -- update
 
-# Im Container selbst:
+# Im Container:
 update
-
-# Manuell:
-cd /opt/stash && docker compose pull && docker compose up -d
 ```
 
 -----
@@ -114,49 +129,21 @@ cd /opt/stash && docker compose pull && docker compose up -d
 ## 🛠️ Fehlerbehebung
 
 ```bash
-# Container Shell öffnen
-pct enter CONTAINER_ID
+pct enter CONTAINER_ID          # Container Shell
+docker logs stash -f            # Stash Logs
+mount | grep qnap               # NAS Mount prüfen
+df -h /mnt/qnap                 # NAS verfügbarer Speicher
 
-# Stash Logs anzeigen
-docker logs stash -f
+# QNAP CIFS Verbindung testen:
+mount -t cifs //192.168.1.xx/Multimedia /mnt/test \
+  -o credentials=/etc/stash-nas.credentials,vers=2.0
 
-# Stash Status prüfen
-cd /opt/stash && docker compose ps
+# Falls Fehler → ältere QTS Version, SMB1 versuchen:
+# /etc/fstab: vers=2.0 → vers=1.0 ändern
 
-# NAS Mount prüfen
-mount | grep nas
-df -h /mnt/nas
-
-# NAS manuell remounten
-mount -a
-
-# Stash neu starten
-cd /opt/stash && docker compose restart
-```
-
-### CIFS/SMB Verbindungsprobleme
-
-```bash
-# CIFS Verbindung testen
-mount -t cifs //NAS-IP/SHARE /mnt/test \
-  -o credentials=/etc/stash-nas.credentials,vers=3.0
-
-# Credentials prüfen (root only!)
-cat /etc/stash-nas.credentials
-
-# SMB-Version erzwingen
-# fstab bearbeiten: vers=3.0 → vers=2.0 oder vers=1.0 (ältere NAS)
-nano /etc/fstab
-```
-
-### NFS Verbindungsprobleme
-
-```bash
-# NFS Exports der NAS anzeigen
-showmount -e NAS-IP
-
-# NFS manuell testen
-mount -t nfs NAS-IP:/export/pfad /mnt/test
+# QNAP NFS testen (NFSv3):
+showmount -e 192.168.1.xx
+mount -t nfs -o nfsvers=3 192.168.1.xx:/Multimedia /mnt/test
 ```
 
 -----
@@ -164,13 +151,13 @@ mount -t nfs NAS-IP:/export/pfad /mnt/test
 ## 📂 Repository Struktur
 
 ```
-.
+StashAtProxmox/
 ├── ct/
 │   └── stash.sh              # Hauptskript (läuft auf Proxmox Host)
 ├── install/
 │   └── stash-install.sh      # Install-Skript (läuft im LXC Container)
 ├── json/
-│   └── stash.json            # Metadaten (für Webfrontend)
+│   └── stash.json            # Metadaten
 └── README.md
 ```
 
@@ -178,14 +165,17 @@ mount -t nfs NAS-IP:/export/pfad /mnt/test
 
 ## 🔗 Links
 
-- [Stash Dokumentation](https://docs.stashapp.cc)
-- [Stash GitHub](https://github.com/stashapp/stash)
-- [Stash Docker Hub](https://hub.docker.com/r/stashapp/stash)
-- [StashDB](https://stashdb.org) — Community Metadaten-Datenbank
-- [community-scripts/ProxmoxVE](https://github.com/community-scripts/ProxmoxVE)
+|Resource             |URL                                                                                     |
+|---------------------|----------------------------------------------------------------------------------------|
+|**Dieses Repository**|[github.com/Nanja-at-web/StashAtProxmox](https://github.com/Nanja-at-web/StashAtProxmox)|
+|Stash Dokumentation  |[docs.stashapp.cc](https://docs.stashapp.cc)                                            |
+|Stash GitHub         |[github.com/stashapp/stash](https://github.com/stashapp/stash)                          |
+|Stash Docker Hub     |[hub.docker.com/r/stashapp/stash](https://hub.docker.com/r/stashapp/stash)              |
+|StashDB (Metadaten)  |[stashdb.org](https://stashdb.org)                                                      |
+|community-scripts    |[github.com/community-scripts/ProxmoxVE](https://github.com/community-scripts/ProxmoxVE)|
 
 -----
 
 ## 📜 Lizenz
 
-MIT — basierend auf dem Muster von [community-scripts/ProxmoxVE](https://github.com/community-scripts/ProxmoxVE)
+MIT — inspiriert von [community-scripts/ProxmoxVE](https://github.com/community-scripts/ProxmoxVE)

@@ -4,9 +4,13 @@
 
 # Stash Install Script — läuft INNERHALB des LXC Containers
 
-# Installiert Docker + Stash und konfiguriert NAS-Freigabe
+# GitHub:  https://github.com/Nanja-at-web/StashAtProxmox
 
-# Quelle: https://github.com/stashapp/stash
+# Quelle:  https://github.com/stashapp/stash
+
+# Docs:    https://docs.stashapp.cc
+
+# NAS:     QNAP TS-210 (SMB/CIFS via 192.168.1.xx)
 
 # ============================================================
 
@@ -35,12 +39,12 @@ msg_warn()  { local msg=”$1”; echo -e “ ${YW}⚠  ${msg}${CL}”; }
 
 NAS_ENABLED=”${NAS_ENABLED:-no}”
 NAS_TYPE=”${NAS_TYPE:-cifs}”
-NAS_SERVER=”${NAS_SERVER:-}”
-NAS_SHARE=”${NAS_SHARE:-}”
-NAS_USER=”${NAS_USER:-}”
+NAS_SERVER=”${NAS_SERVER:-192.168.1.}”
+NAS_SHARE=”${NAS_SHARE:-Multimedia}”
+NAS_USER=”${NAS_USER:-admin}”
 NAS_PASS=”${NAS_PASS:-}”
 NAS_DOMAIN=”${NAS_DOMAIN:-WORKGROUP}”
-NAS_MOUNT=”${NAS_MOUNT:-/mnt/nas}”
+NAS_MOUNT=”${NAS_MOUNT:-/mnt/qnap}”
 NAS_OPTIONS=”${NAS_OPTIONS:-}”
 STASH_PORT=”${STASH_PORT:-9999}”
 
@@ -176,8 +180,10 @@ chmod 600 /etc/stash-nas.credentials
 msg_ok “Credentials gespeichert: /etc/stash-nas.credentials”
 
 ```
-# CIFS Mount-Optionen zusammenbauen
-CIFS_BASE_OPTS="credentials=/etc/stash-nas.credentials,iocharset=utf8,vers=3.0,uid=0,gid=0,file_mode=0777,dir_mode=0777,_netdev"
+# CIFS Mount-Optionen für QNAP TS-210 zusammenbauen
+# vers=2.0: QNAP TS-210 mit QTS unterstützt SMB2 zuverlässig.
+# Falls Verbindungsprobleme: vers=1.0 in /etc/fstab eintragen.
+CIFS_BASE_OPTS="credentials=/etc/stash-nas.credentials,iocharset=utf8,vers=2.0,uid=0,gid=0,file_mode=0777,dir_mode=0777,_netdev"
 if [[ -n "${NAS_OPTIONS}" ]]; then
   CIFS_MOUNT_OPTS="${CIFS_BASE_OPTS},${NAS_OPTIONS}"
 else
@@ -186,12 +192,14 @@ fi
 
 FSTAB_ENTRY="//${NAS_SERVER}/${NAS_SHARE} ${NAS_MOUNT} cifs ${CIFS_MOUNT_OPTS} 0 0"
 
-msg_info "CIFS Mount wird eingerichtet (//${NAS_SERVER}/${NAS_SHARE})"
+msg_info "CIFS Mount wird eingerichtet — QNAP TS-210 (//${NAS_SERVER}/${NAS_SHARE})"
 ```
 
 else
-# –– NFS Konfiguration ––
-NFS_BASE_OPTS=“nfsvers=4,_netdev,timeo=14,retry=3”
+# –– NFS Konfiguration für QNAP TS-210 ––
+# NFSv3: QNAP TS-210 unterstützt NFSv3 stabiler als NFSv4.
+# NFS muss in QNAP: Systemsteuerung → Netzwerk-Dienste → NFS aktiviert sein.
+NFS_BASE_OPTS=“nfsvers=3,_netdev,timeo=14,retry=3”
 if [[ -n “${NAS_OPTIONS}” ]]; then
 NFS_MOUNT_OPTS=”${NFS_BASE_OPTS},${NAS_OPTIONS}”
 else
@@ -201,7 +209,7 @@ fi
 ```
 FSTAB_ENTRY="${NAS_SERVER}:${NAS_SHARE} ${NAS_MOUNT} nfs ${NFS_MOUNT_OPTS} 0 0"
 
-msg_info "NFS Mount wird eingerichtet (${NAS_SERVER}:${NAS_SHARE})"
+msg_info "NFS Mount wird eingerichtet — QNAP TS-210 (${NAS_SERVER}:${NAS_SHARE})"
 ```
 
 fi
