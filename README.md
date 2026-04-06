@@ -4,42 +4,50 @@ Dieses Repository enthält ein Community-Scripts-artiges Setup für **StashApp**
 
 ## Inhalt des Repositories
 
-- `ct/stashapp.sh` — Host-seitiges Proxmox-CT-Skript zum Erstellen bzw. Aktualisieren des Containers
-- `install/stashapp-install.sh` — Installationsskript **im** Container für Docker und Stash
+- `ct/stashapp.sh` — ursprüngliches Host-seitiges Proxmox-CT-Skript
+- `ct/stashapp-fixed.sh` — **repariertes** Host-seitiges Proxmox-CT-Skript für den empfohlenen Neuaufbau
+- `install/stashapp-install.sh` — ursprüngliches Installationsskript im Container
+- `install/stashapp-install-standalone.sh` — **repariertes standalone Installationsskript** im Container
 
-## One-Click-Start
+## Empfohlener Start
 
-Wenn das Repository öffentlich erreichbar ist, kann das CT-Skript direkt aus der Proxmox-Shell gestartet werden:
+Für neue Installationen oder einen Neuaufbau des Containers solltest du jetzt **das reparierte CT-Skript** verwenden:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Nanja-at-web/StashAtProxmox/main/ct/stashapp.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Nanja-at-web/StashAtProxmox/main/ct/stashapp-fixed.sh)"
 ```
 
-## Was das Skript macht
+Wenn bereits ein fehlerhaft erstellter Container existiert, ist der saubere Weg:
 
-Das Setup folgt dem allgemeinen Aufbau der Proxmox Community Scripts: ein **CT-Skript** erstellt den LXC und ein **Installationsskript** richtet die Anwendung im Gast ein.
+```bash
+pct stop 101
+pct destroy 101
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Nanja-at-web/StashAtProxmox/main/ct/stashapp-fixed.sh)"
+```
+
+## Was das reparierte Setup macht
+
+Das Setup folgt dem allgemeinen Aufbau der Proxmox Community Scripts: ein **CT-Skript** erstellt den LXC und ein **Installationsskript** richtet die Anwendung im Gast ein. Die reparierte Variante trennt diese Rollen sauber und ruft den Installer nach dem Containerbau direkt im LXC auf.
 
 ### 1. Es erstellt einen unprivilegierten Debian-LXC
 
-Im Community-Scripts-Projekt werden Container-Skripte im Bereich `ct/` dokumentiert, während containerinterne Installationsskripte im Bereich `install/` liegen. Das offizielle Docker-CT-Skript der Community Scripts setzt standardmäßig:
-
-- `var_os="debian"`
-- `var_version="13"`
-- `var_unprivileged="1"`
-
-Das StashApp-Skript orientiert sich an diesem Muster.
+Im Community-Scripts-Projekt werden Container-Skripte im Bereich `ct/` dokumentiert, während containerinterne Installationsskripte im Bereich `install/` liegen. Das offizielle Docker-CT-Skript der Community Scripts setzt standardmäßig Debian und unprivilegierte Container. Das StashApp-Skript orientiert sich an diesem Muster.
 
 **Warum unprivilegiert?**  
 Ein unprivilegierter LXC ist in Proxmox in der Regel die sicherere Standardwahl. Für Stash ist das sinnvoll, weil die Medien auf einer NAS-Freigabe liegen und die eigentliche Anwendung zusätzlich isoliert per Docker läuft.
 
-### 2. Es installiert Docker im Container
+### 2. Es startet danach den Installer direkt im Container
 
-Das Installationsskript richtet Docker im Container ein. Auch das folgt der Logik des offiziellen Docker-Installationsskripts der Community Scripts, das Docker inklusive Compose/Buildx installiert.
+Der wichtigste Fix ist: `ct/stashapp-fixed.sh` ruft nach dem erfolgreichen Containerbau gezielt das neue Script `install/stashapp-install-standalone.sh` **im Container** auf. Dadurch hängt die Installation nicht mehr von einem fehlenden Framework-Import ab.
+
+### 3. Es installiert Docker im Container
+
+Das standalone Installationsskript richtet Docker direkt im Container ein. Es installiert zuerst Basiswerkzeuge wie `curl` und `ca-certificates` und nutzt danach den offiziellen Docker-Installationsweg über `get.docker.com`.
 
 Warum Docker?  
 Stash dokumentiert Docker Compose als offiziellen Installationsweg. Dabei wird eine `docker-compose.yml` gespeichert, angepasst und anschließend mit `docker compose up -d` gestartet.
 
-### 3. Es erstellt eine Docker-Compose-Konfiguration für Stash
+### 4. Es erstellt eine Docker-Compose-Konfiguration für Stash
 
 Stash stellt eine offizielle Compose-Vorlage bereit. Dort werden unter anderem diese Pfade verwendet:
 
@@ -65,7 +73,7 @@ Zusätzlich werden lokale Verzeichnisse für Konfiguration und Begleitdaten ange
 /opt/stash/generated
 ```
 
-### 4. Es veröffentlicht Stash auf Port 9999
+### 5. Es veröffentlicht Stash auf Port 9999
 
 In der offiziellen Docker-Dokumentation von Stash wird der Standard-Port in der Compose-Datei mit
 
@@ -82,9 +90,9 @@ Beispiel:
 http://192.168.1.50:9999
 ```
 
-### 5. Es verwendet standardmäßig `/mnt/stash-library` als Bibliothekspfad im LXC
+### 6. Es verwendet standardmäßig `/mnt/stash-library` als Bibliothekspfad im LXC
 
-Das Installationsskript fragt einen Bibliothekspfad im Container ab. Standardmäßig wird verwendet:
+Das Installationsskript verwendet standardmäßig:
 
 ```text
 /mnt/stash-library
@@ -92,7 +100,7 @@ Das Installationsskript fragt einen Bibliothekspfad im Container ab. Standardmä
 
 Dieser Pfad ist bewusst so gewählt, dass er gut zu einem **Bind-Mount aus Proxmox** passt. Statt die NAS direkt im Docker-Container zu mounten, wird die Freigabe zuerst auf dem **Proxmox-Host** eingebunden und danach in den LXC durchgereicht.
 
-### 6. Es bindet diesen Pfad im Stash-Container als `/data` ein
+### 7. Es bindet diesen Pfad im Stash-Container als `/data` ein
 
 Die Compose-Datei mappt den Bibliothekspfad des LXC nach `/data` in den eigentlichen Stash-Container.
 
